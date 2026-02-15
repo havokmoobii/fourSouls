@@ -7,18 +7,12 @@ import (
 	"time"
 )
 
-type apiConfig struct {
-	test string
-}
-
 func main() {
 	m := http.NewServeMux()
 
-	cfg := apiConfig{}
-
 	port := "1337"
 
-	m.HandleFunc("GET /test", cfg.handlerTest)
+	m.HandleFunc("/ws", handlerWebsocket)
 
 	srv := http.Server{
 		Handler:      m,
@@ -32,8 +26,4 @@ func main() {
 	fmt.Println("server started on", port)
 	err := srv.ListenAndServe()
 	log.Fatal(err)
-}
-
-func (cfg *apiConfig) handlerTest(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Hello World!")
 }
