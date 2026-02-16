@@ -1,28 +1,30 @@
 package main
 
-// Next time: Make changes so the server can track multiple clients and send a message (and eventually state) to all of them.
+// Next time: Make changes so the server can track multiple clients and send a message to all of them.
 
 import (
 	"fmt"
-
+	"os"
+	"bufio"
 	"github.com/gorilla/websocket"
+	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
 
-func post(conn *websocket.Conn, msg string) error {
-	err := conn.WriteMessage(websocket.TextMessage, []byte(msg))
+func post(conn *websocket.Conn, msg interface{}) (interface{}, error) {
+	err := conn.WriteJSON(msg)
 	if err != nil {
 		fmt.Println("Write error:", err)
-		return err
+		return nil, err
 	}
 
-	_, reply, err := conn.ReadMessage()
+	var resp interface{}
+	err = conn.ReadJSON(&resp)
 	if err != nil {
 		fmt.Println("Read error:", err)
-		return err
+		return nil, err
 	}
 
-	fmt.Println(string(reply))
-	return nil
+	return resp, nil
 }
 
 func main() {
@@ -32,12 +34,31 @@ func main() {
 		return
 	}
 	defer conn.Close()
-	
-	msg := "Hey does this work???"
 
-	err = post(conn, msg)
+	scanner := bufio.NewScanner(os.Stdin)
+
+	gs := gamelogic.GameState{
+		Player: "HavokMoobii",
+	}
+
+	fmt.Println(gs)
+
+	fmt.Println("Press enter to send a message to the server.")
+	scanner.Scan()
+
+	resp, err := post(conn, gs)
 	if err != nil {
 		fmt.Println("Post error:", err)
 	}
+
+	fmt.Println(resp)
+
+	err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	if err != nil {
+		fmt.Println("write close:", err)
+		return
+	}
+
+	
 
 }

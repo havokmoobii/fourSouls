@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"net/http"
-
 	"github.com/gorilla/websocket"
 )
 
@@ -23,17 +22,19 @@ func handlerWebsocket(w http.ResponseWriter, r *http.Request) {
 	log.Println("Client Successfully Connected")
 
 	for {
-		messageType, msg, err := conn.ReadMessage()
+		var msg interface{}
+		err := conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Read error:", err)
 			break
 		}
 
-		log.Println(string(msg))
+		log.Println(msg)
 
-		if err := conn.WriteMessage(messageType, msg); err != nil {
+		if err := conn.WriteJSON(msg); err != nil {
 			log.Println("Write error:", err)
 			break
 		}
 	}
 }
+
