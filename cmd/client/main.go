@@ -1,6 +1,7 @@
 package main
 
-// Next time: Make changes so the server can track multiple clients and send a message to all of them.
+// Next time: Set up a repl loop and give the clients options.
+// I want to set up chat, but not sure how with the channel blocking implementation
 
 import (
 	"fmt"
@@ -35,21 +36,14 @@ func connect() (*websocket.Conn, error) {
 	}
 }
 
-func post(conn *websocket.Conn, msg interface{}) (interface{}, error) {
+func post(conn *websocket.Conn, msg interface{}) error {
 	err := conn.WriteJSON(msg)
 	if err != nil {
 		fmt.Println("Write error:", err)
-		return nil, err
+		return err
 	}
 
-	var resp interface{}
-	err = conn.ReadJSON(&resp)
-	if err != nil {
-		fmt.Println("Read error:", err)
-		return nil, err
-	}
-
-	return resp, nil
+	return nil
 }
 
 func main() {
@@ -62,25 +56,34 @@ func main() {
 
 	fmt.Println("Success!")
 
+	resp := make(chan interface{})
+	go func() {
+		defer close(resp)
+		for {
+			var payload interface{}
+			err = conn.ReadJSON(&payload)
+			resp <- payload
+		}
+	}()
+
 	gs := gamelogic.GameState{
 		Player: "HavokMoobii",
 	}
 
-	resp, err := post(conn, gs)
+	err = post(conn, gs)
 	if err != nil {
 		fmt.Println("Post error:", err)
 	}
 
-	fmt.Println(resp)
-
-	for {}
+	// Game state will be updated across all clients using this channel. The clients without priority will block after posting a status update.
+	// the client with priority will take thier action and then send another game state update to the rest.
+	for {
+		fmt.Println(<- resp)
+	}
 
 	err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
 		fmt.Println("write close:", err)
 		return
 	}
-
-	
-
 }

@@ -42,9 +42,11 @@ func (cfg *config) handleConnections(w http.ResponseWriter, r *http.Request) {
 
 		log.Println(msg)
 
-		if err := conn.WriteJSON(msg); err != nil {
-			log.Println("Write error:", err)
-			break
+		for _, client := range cfg.clients {
+			if err := client.WriteJSON(msg); err != nil {
+				log.Println("Write error:", err)
+				break
+			}
 		}
 	}
 }
