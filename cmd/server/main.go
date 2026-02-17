@@ -5,14 +5,23 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"github.com/gorilla/websocket"
 )
 
+type config struct {
+	clients map[string]*websocket.Conn
+}
+
 func main() {
+	cfg := config{
+		clients: make(map[string]*websocket.Conn),
+	}
+
 	m := http.NewServeMux()
 
 	port := "1337"
 
-	m.HandleFunc("/ws", handlerWebsocket)
+	m.HandleFunc("/connect/{username}", cfg.handleConnections)
 
 	srv := http.Server{
 		Handler:      m,

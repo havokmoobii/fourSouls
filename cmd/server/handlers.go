@@ -12,12 +12,23 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func handlerWebsocket(w http.ResponseWriter, r *http.Request) {
+func (cfg *config) handleConnections(w http.ResponseWriter, r *http.Request) {	
+	username := r.PathValue("username")
+	
+	_, usernameTaken := cfg.clients[username]
+	if usernameTaken {
+		http.Error(w, "Username is taken", http.StatusBadRequest)
+		return
+	}
+	
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
+		return
 	}
 	defer conn.Close()
+	
+	cfg.clients[username] = conn
 
 	log.Println("Client Successfully Connected")
 

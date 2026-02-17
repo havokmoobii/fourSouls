@@ -4,11 +4,36 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"bufio"
+	"io"
+	"net/http"
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
+
+func connect() (*websocket.Conn, error) {
+	for {
+		username, err := gamelogic.ClientWelcome()
+
+		url := fmt.Sprintf("ws://localhost:1337/connect/%s", username)
+
+		fmt.Println("Connecting to server...")
+
+		conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
+		if err != nil {
+			if dialResp != nil {
+				body, _ := io.ReadAll(dialResp.Body)
+				dialResp.Body.Close()
+
+				fmt.Printf("\nHTTP Status: %d %s\n", dialResp.StatusCode, http.StatusText(dialResp.StatusCode))
+				fmt.Printf("Server message: %s\n", string(body))
+				continue
+			}
+			fmt.Println("Dial error:", err)
+			return nil, err
+		}
+		return conn, nil
+	}
+}
 
 func post(conn *websocket.Conn, msg interface{}) (interface{}, error) {
 	err := conn.WriteJSON(msg)
@@ -28,23 +53,18 @@ func post(conn *websocket.Conn, msg interface{}) (interface{}, error) {
 }
 
 func main() {
-	conn, _, err := websocket.DefaultDialer.Dial("ws://localhost:1337/ws", nil)
+	conn, err := connect()
 	if err != nil {
-		fmt.Println("Dial error:", err)
+		// Error is handled in the function, so we can simply return.
 		return
 	}
 	defer conn.Close()
 
-	scanner := bufio.NewScanner(os.Stdin)
+	fmt.Println("Success!")
 
 	gs := gamelogic.GameState{
 		Player: "HavokMoobii",
 	}
-
-	fmt.Println(gs)
-
-	fmt.Println("Press enter to send a message to the server.")
-	scanner.Scan()
 
 	resp, err := post(conn, gs)
 	if err != nil {
@@ -52,6 +72,8 @@ func main() {
 	}
 
 	fmt.Println(resp)
+
+	for {}
 
 	err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
