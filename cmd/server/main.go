@@ -8,13 +8,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type config struct {
-	clients map[string]*websocket.Conn
+type serverConfig struct {
+	clients     map[string]*websocket.Conn
+	chatClients map[string]*websocket.Conn
 }
 
 func main() {
-	cfg := config{
-		clients: make(map[string]*websocket.Conn),
+	cfg := serverConfig{
+		clients:     make(map[string]*websocket.Conn),
+		chatClients: make(map[string]*websocket.Conn),
 	}
 
 	m := http.NewServeMux()
@@ -22,6 +24,7 @@ func main() {
 	port := "1337"
 
 	m.HandleFunc("/connect/{username}", cfg.handleConnections)
+	m.HandleFunc("/chat/connect/{username}", cfg.handleChatConnections)
 
 	srv := http.Server{
 		Handler:      m,

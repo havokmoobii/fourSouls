@@ -5,83 +5,47 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"net/http"
+	"strings"
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
 
-func connect() (*websocket.Conn, error) {
-	for {
-		username, err := gamelogic.ClientWelcome()
-
-		url := fmt.Sprintf("ws://localhost:1337/connect/%s", username)
-
-		fmt.Println("Connecting to server...")
-
-		conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
-		if err != nil {
-			if dialResp != nil {
-				body, _ := io.ReadAll(dialResp.Body)
-				dialResp.Body.Close()
-
-				fmt.Printf("\nHTTP Status: %d %s\n", dialResp.StatusCode, http.StatusText(dialResp.StatusCode))
-				fmt.Printf("Server message: %s\n", string(body))
-				continue
-			}
-			fmt.Println("Dial error:", err)
-			return nil, err
-		}
-		return conn, nil
-	}
-}
-
-func post(conn *websocket.Conn, msg interface{}) error {
-	err := conn.WriteJSON(msg)
-	if err != nil {
-		fmt.Println("Write error:", err)
-		return err
-	}
-
-	return nil
-}
-
 func main() {
-	conn, err := connect()
+	cfg := clientConfig{
+		gs: gamelogic.GameState{},
+	}
+	
+	err := cfg.connect()
 	if err != nil {
 		// Error is handled in the function, so we can simply return.
 		return
 	}
-	defer conn.Close()
+	defer cfg.conn.Close()
 
 	fmt.Println("Success!")
 
-	resp := make(chan interface{})
-	go func() {
-		defer close(resp)
-		for {
-			var payload interface{}
-			err = conn.ReadJSON(&payload)
-			resp <- payload
-		}
-	}()
+	go cfg.receivePost()
+	go cfg.receiveChatPost()
 
-	gs := gamelogic.GameState{
-		Player: "HavokMoobii",
-	}
-
-	err = post(conn, gs)
+	// When player has priorty they will end each action with a call to post to update the rest of the players and pass priorty.
+	err = cfg.post(cfg.gs)
 	if err != nil {
 		fmt.Println("Post error:", err)
 	}
 
-	// Game state will be updated across all clients using this channel. The clients without priority will block after posting a status update.
-	// the client with priority will take thier action and then send another game state update to the rest.
+	// Game state will be updated after each priority player action. Below will be a REPL loop. Messages to the clients will always provide a cursor to
+	// to make the experience mostly seamless. The idea is that the player is told it is their turn and they can enter relevant commands, but can still use
+	// chat and some other features when they do not have priority
 	for {
-		fmt.Println(<- resp)
+		msg := gamelogic.GetInput()
+		cfg.chatPost(strings.Join(msg, " "))
+		msg = gamelogic.GetInput()
+		if len(msg) > 1 {
+			cfg.chatDM(msg[0], strings.Join(msg[1:], " "))
+		}
 	}
 
-	err = conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	err = cfg.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
 		fmt.Println("write close:", err)
 		return
