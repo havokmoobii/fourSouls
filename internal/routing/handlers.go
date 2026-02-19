@@ -1,4 +1,4 @@
-package main
+package routing
 
 import (
 	"log"
@@ -6,16 +6,21 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type ServerConfig struct {
+	Clients     map[string]*websocket.Conn
+	ChatClients map[string]*websocket.Conn
+}
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 	ReadBufferSize: 1024,
 	WriteBufferSize: 1024,
 }
 
-func (cfg *serverConfig) handleConnections(w http.ResponseWriter, r *http.Request) {	
+func (cfg *ServerConfig) HandleConnections(w http.ResponseWriter, r *http.Request) {	
 	username := r.PathValue("username")
 	
-	_, usernameTaken := cfg.clients[username]
+	_, usernameTaken := cfg.Clients[username]
 	if usernameTaken {
 		http.Error(w, "Username is taken", http.StatusBadRequest)
 		return
@@ -28,7 +33,7 @@ func (cfg *serverConfig) handleConnections(w http.ResponseWriter, r *http.Reques
 	}
 	defer conn.Close()
 	
-	cfg.clients[username] = conn
+	cfg.Clients[username] = conn
 
 	log.Println("Client Successfully Connected")
 
@@ -37,12 +42,13 @@ func (cfg *serverConfig) handleConnections(w http.ResponseWriter, r *http.Reques
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Read error:", err)
+			delete(cfg.Clients, username)
 			break
 		}
 
 		log.Println(msg)
 
-		for _, client := range cfg.clients {
+		for _, client := range cfg.Clients {
 			if err := client.WriteJSON(msg); err != nil {
 				log.Println("Write error:", err)
 				break
@@ -51,10 +57,10 @@ func (cfg *serverConfig) handleConnections(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (cfg *serverConfig) handleChatConnections(w http.ResponseWriter, r *http.Request) {	
+func (cfg *ServerConfig) HandleChatConnections(w http.ResponseWriter, r *http.Request) {	
 	username := r.PathValue("username")
 	
-	_, usernameTaken := cfg.chatClients[username]
+	_, usernameTaken := cfg.ChatClients[username]
 	if usernameTaken {
 		http.Error(w, "Username is taken", http.StatusBadRequest)
 		return
@@ -67,7 +73,7 @@ func (cfg *serverConfig) handleChatConnections(w http.ResponseWriter, r *http.Re
 	}
 	defer conn.Close()
 	
-	cfg.chatClients[username] = conn
+	cfg.ChatClients[username] = conn
 
 	log.Println("Chat Client Successfully Connected")
 
@@ -76,12 +82,13 @@ func (cfg *serverConfig) handleChatConnections(w http.ResponseWriter, r *http.Re
 		err := conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Read error:", err)
+			delete(cfg.ChatClients, username)
 			break
 		}
 
 		log.Println(msg)
 
-		for _, client := range cfg.chatClients {
+		for _, client := range cfg.ChatClients {
 			if err := client.WriteJSON(msg); err != nil {
 				log.Println("Write error:", err)
 				break

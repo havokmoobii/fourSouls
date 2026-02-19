@@ -6,25 +6,21 @@ import (
 	"net/http"
 	"time"
 	"github.com/gorilla/websocket"
+	"github.com/havokmoobii/fourSouls/internal/routing"
 )
 
-type serverConfig struct {
-	clients     map[string]*websocket.Conn
-	chatClients map[string]*websocket.Conn
-}
-
 func main() {
-	cfg := serverConfig{
-		clients:     make(map[string]*websocket.Conn),
-		chatClients: make(map[string]*websocket.Conn),
+	cfg := routing.ServerConfig{
+		Clients:     make(map[string]*websocket.Conn),
+		ChatClients: make(map[string]*websocket.Conn),
 	}
 
 	m := http.NewServeMux()
 
 	port := "1337"
 
-	m.HandleFunc("/connect/{username}", cfg.handleConnections)
-	m.HandleFunc("/chat/connect/{username}", cfg.handleChatConnections)
+	m.HandleFunc("/connect/{username}", cfg.HandleConnections)
+	m.HandleFunc("/chat/connect/{username}", cfg.HandleChatConnections)
 
 	srv := http.Server{
 		Handler:      m,

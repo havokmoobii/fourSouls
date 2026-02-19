@@ -1,4 +1,4 @@
-package main
+package routing
 
 import (
 	"fmt"
@@ -8,11 +8,12 @@ import (
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
 
-type clientConfig struct {
-	conn     *websocket.Conn
-	chatConn *websocket.Conn
-	username string
-	gs       gamelogic.GameState
+type ClientConfig struct {
+	Conn        *websocket.Conn
+	ChatConn    *websocket.Conn
+	CloseSignal bool
+	username    string
+	GS          gamelogic.GameState
 }
 
 type message struct {
@@ -21,7 +22,7 @@ type message struct {
 	Body      string
 }
 
-func (cfg *clientConfig) connect() error {
+func (cfg *ClientConfig) Connect() error {
 	for {
 		username, err := gamelogic.ClientWelcome()
 
@@ -30,7 +31,7 @@ func (cfg *clientConfig) connect() error {
 
 		fmt.Println("Connecting to server...")
 
-		conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
+		Conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
 		if err != nil {
 			if dialResp != nil {
 				body, _ := io.ReadAll(dialResp.Body)
@@ -44,7 +45,7 @@ func (cfg *clientConfig) connect() error {
 			return err
 		}
 
-		chatConn, dialResp, err := websocket.DefaultDialer.Dial(chatUrl, nil)
+		ChatConn, dialResp, err := websocket.DefaultDialer.Dial(chatUrl, nil)
 		if err != nil {
 			if dialResp != nil {
 				body, _ := io.ReadAll(dialResp.Body)
@@ -58,18 +59,18 @@ func (cfg *clientConfig) connect() error {
 			return err
 		}
 
-		cfg.conn = conn
-		cfg.chatConn = chatConn
+		cfg.Conn = Conn
+		cfg.ChatConn = ChatConn
 		cfg.username = username
 
-		// Have the chat connection post that the player has joined the game here 
+		// Have the chat Connection post that the player has joined the game here 
 
 		return nil
 	}
 }
 
-func (cfg *clientConfig) post(msg gamelogic.GameState) error {
-	err := cfg.conn.WriteJSON(msg)
+func (cfg *ClientConfig) Post(msg gamelogic.GameState) error {
+	err := cfg.Conn.WriteJSON(msg)
 	if err != nil {
 		fmt.Println("Write error:", err)
 		return err
@@ -78,20 +79,23 @@ func (cfg *clientConfig) post(msg gamelogic.GameState) error {
 	return nil
 }
 
-func (cfg *clientConfig) receivePost() {
+func (cfg *ClientConfig) ReceivePost() {
 	for {
 		var data gamelogic.GameState
-		err := cfg.conn.ReadJSON(&data)
+		err := cfg.Conn.ReadJSON(&data)
+		if cfg.CloseSignal {
+			return
+		}
 		if err != nil {
 			fmt.Println("Read error:", err)
 		}
 		fmt.Println("Message Received")
-		cfg.gs = data
+		cfg.GS = data
 	}
 }
 
-func (cfg *clientConfig) chatPost(msg string) error {
-	err := cfg.chatConn.WriteJSON(message{
+func (cfg *ClientConfig) ChatPost(msg string) error {
+	err := cfg.ChatConn.WriteJSON(message{
 		Sender: cfg.username,
 		Body:   msg,
 	})
@@ -103,9 +107,9 @@ func (cfg *clientConfig) chatPost(msg string) error {
 	return nil
 }
 
-// Can store everyone's usernames in gs to check if a recipient username is valid later.
-func (cfg *clientConfig) chatDM(recipient, msg string) error {
-	err := cfg.chatConn.WriteJSON(message{
+// Can store everyone's usernames in GS to check if a recipient username is valid later.
+func (cfg *ClientConfig) ChatDM(recipient, msg string) error {
+	err := cfg.ChatConn.WriteJSON(message{
 		Sender: cfg.username,
 		Recipient: recipient,
 		Body:   msg,
@@ -118,10 +122,13 @@ func (cfg *clientConfig) chatDM(recipient, msg string) error {
 	return nil
 }
 
-func (cfg *clientConfig) receiveChatPost() {
+func (cfg *ClientConfig) ReceiveChatPost() {
 	for {
 		var msg message
-		err := cfg.chatConn.ReadJSON(&msg)
+		err := cfg.ChatConn.ReadJSON(&msg)
+		if cfg.CloseSignal {
+			return
+		}
 		if err != nil {
 			fmt.Println("Read error:", err)
 		}
