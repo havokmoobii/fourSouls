@@ -19,6 +19,7 @@ func main() {
 
 	port := "1337"
 
+	m.HandleFunc("/status", cfg.HandleStatus)
 	m.HandleFunc("/connect/{username}", cfg.HandleConnections)
 	m.HandleFunc("/chat/connect/{username}", cfg.HandleChatConnections)
 

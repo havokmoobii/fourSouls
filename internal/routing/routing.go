@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
 
 type ClientConfig struct {
+	client      http.Client
 	Conn        *websocket.Conn
 	ChatConn    *websocket.Conn
 	CloseSignal bool
@@ -20,6 +22,47 @@ type message struct {
 	Sender    string
 	Recipient string
 	Body      string
+}
+
+func (cfg *ClientConfig) CheckServer() error {
+	url := "http://localhost:1337/status"
+
+	fmt.Println("\nChecking server for existing games.")
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := cfg.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	dat, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	status := ServerStatusResp{}
+	err = json.Unmarshal(dat, &status)
+	if err != nil {
+		return err
+	}
+
+	if len(status.Games[0].Users) == 0 {
+		fmt.Println("\nThe lobby is empty.")
+		return nil
+	}
+
+	fmt.Println("\nGameroom 1:", status.Games[0].State)
+	for _, user := range status.Games[0].Users {
+		fmt.Println(user)
+	}
+	fmt.Println()
+	
+	return nil
 }
 
 func (cfg *ClientConfig) Connect() error {

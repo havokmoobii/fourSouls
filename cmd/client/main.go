@@ -11,11 +11,14 @@ import (
 )
 
 func main() {
-	//
 	cfg := routing.ClientConfig{
 		GS:          gamelogic.GameState{},
 		CloseSignal: false,
 	}
+
+	fmt.Println("Welcome to the Four Souls client!")
+
+	cfg.CheckServer()
 	
 	err := cfg.Connect()
 	if err != nil {

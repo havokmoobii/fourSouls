@@ -3,12 +3,38 @@ package routing
 import (
 	"log"
 	"net/http"
+	"encoding/json"
 	"github.com/gorilla/websocket"
 )
 
 type ServerConfig struct {
 	Clients     map[string]*websocket.Conn
 	ChatClients map[string]*websocket.Conn
+}
+
+type ServerStatusResp struct {
+	Games []Games
+}
+
+type Games struct {
+	State string
+	Users []string
+}
+
+func (cfg *ServerConfig) HandleStatus(w http.ResponseWriter, r *http.Request) {
+	status := ServerStatusResp{}
+
+	status.Games = append(status.Games, Games{})
+
+	status.Games[0].State = "Waiting to Start"
+
+	for username, _ := range cfg.Clients {
+		status.Games[0].Users = append(status.Games[0].Users, username)
+	}
+
+	log.Println("Responding to a Status Request")
+
+	respondWithJSON(w, http.StatusOK, status)
 }
 
 var upgrader = websocket.Upgrader{
@@ -23,6 +49,11 @@ func (cfg *ServerConfig) HandleConnections(w http.ResponseWriter, r *http.Reques
 	_, usernameTaken := cfg.Clients[username]
 	if usernameTaken {
 		http.Error(w, "Username is taken", http.StatusBadRequest)
+		return
+	}
+
+	if len(cfg.Clients) > 3 {
+		http.Error(w, "Only 4 players can play per game", http.StatusBadRequest)
 		return
 	}
 	
@@ -95,5 +126,17 @@ func (cfg *ServerConfig) HandleChatConnections(w http.ResponseWriter, r *http.Re
 			}
 		}
 	}
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	dat, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Error marshalling JSON: %s", err)
+		w.WriteHeader(500)
+		return
+	}
+	w.WriteHeader(code)
+	w.Write(dat)
 }
 

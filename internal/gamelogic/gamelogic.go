@@ -9,7 +9,6 @@ import (
 )
 
 func ClientWelcome() (string, error) {
-	fmt.Println("Welcome to the Four Souls client!")
 	fmt.Println("Please enter your username:")
 	words := GetInput()
 	if len(words) == 0 {
