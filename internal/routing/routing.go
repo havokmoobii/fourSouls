@@ -14,7 +14,7 @@ type ClientConfig struct {
 	Conn        *websocket.Conn
 	ChatConn    *websocket.Conn
 	CloseSignal bool
-	username    string
+	Username    string
 	GS          gamelogic.GameState
 }
 
@@ -27,7 +27,48 @@ type message struct {
 func (cfg *ClientConfig) CheckServer() error {
 	url := "http://localhost:1337/status"
 
-	fmt.Println("\nChecking server for existing games.")
+	fmt.Println("\nChecking server for existing games...")
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := cfg.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	dat, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	status := ServerStatusResp{}
+	err = json.Unmarshal(dat, &status)
+	if err != nil {
+		return err
+	}
+
+	if len(status.Games[0].Users) == 0 {
+		fmt.Println("\nThe lobby is empty.")
+		return nil
+	}
+
+	fmt.Println("\nGameroom 1:", status.Games[0].State)
+	for _, user := range status.Games[0].Users {
+		fmt.Println(user)
+	}
+	fmt.Println()
+	
+	return nil
+}
+
+func (cfg *ClientConfig) CreateRoom() error {
+	url := "http://localhost:1337/room"
+
+	fmt.Println("\nCreating and joining new Gameroom...")
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -104,7 +145,9 @@ func (cfg *ClientConfig) Connect() error {
 
 		cfg.Conn = Conn
 		cfg.ChatConn = ChatConn
-		cfg.username = username
+		cfg.Username = username
+
+		fmt.Println("Success!\n")
 
 		// Have the chat Connection post that the player has joined the game here 
 
@@ -133,13 +176,14 @@ func (cfg *ClientConfig) ReceivePost() {
 			fmt.Println("Read error:", err)
 		}
 		fmt.Println("Message Received")
+		fmt.Println("> ")
 		cfg.GS = data
 	}
 }
 
 func (cfg *ClientConfig) ChatPost(msg string) error {
 	err := cfg.ChatConn.WriteJSON(message{
-		Sender: cfg.username,
+		Sender: cfg.Username,
 		Body:   msg,
 	})
 	if err != nil {
@@ -153,7 +197,7 @@ func (cfg *ClientConfig) ChatPost(msg string) error {
 // Can store everyone's usernames in GS to check if a recipient username is valid later.
 func (cfg *ClientConfig) ChatDM(recipient, msg string) error {
 	err := cfg.ChatConn.WriteJSON(message{
-		Sender: cfg.username,
+		Sender: cfg.Username,
 		Recipient: recipient,
 		Body:   msg,
 	})
@@ -176,13 +220,17 @@ func (cfg *ClientConfig) ReceiveChatPost() {
 			fmt.Println("Read error:", err)
 		}
 		if msg.Recipient == "" {
-			fmt.Printf("\n<%s> %s\n>", msg.Sender, msg.Body)
-		} else {
-			if cfg.username == msg.Recipient {
-				fmt.Printf("\n<<From:%s>> %s\n>", msg.Sender, msg.Body)
+			if cfg.Username == msg.Sender {
+				fmt.Printf("\n<%s> %s\n\n> ", msg.Sender, msg.Body)
+			} else {
+				fmt.Printf("\n\n<%s> %s\n\n> ", msg.Sender, msg.Body)
 			}
-			if cfg.username == msg.Sender {
-				fmt.Printf("\n<<To:%s>> %s\n>", msg.Recipient, msg.Body)
+		} else {
+			if cfg.Username == msg.Recipient {
+				fmt.Printf("\n\n<<From:%s>> %s\n\n> ", msg.Sender, msg.Body)
+			}
+			if cfg.Username == msg.Sender {
+				fmt.Printf("\n\n<<To:%s>> %s\n\n> ", msg.Recipient, msg.Body)
 			}
 		}
 		

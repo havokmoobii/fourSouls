@@ -12,6 +12,11 @@ type ServerConfig struct {
 	ChatClients map[string]*websocket.Conn
 }
 
+type room struct {
+	clients     map[string]*websocket.Conn
+	chatClients map[string]*websocket.Conn
+}
+
 type ServerStatusResp struct {
 	Games []Games
 }
@@ -43,7 +48,7 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (cfg *ServerConfig) HandleConnections(w http.ResponseWriter, r *http.Request) {	
+func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {	
 	username := r.PathValue("username")
 	
 	_, usernameTaken := cfg.Clients[username]
@@ -88,7 +93,7 @@ func (cfg *ServerConfig) HandleConnections(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (cfg *ServerConfig) HandleChatConnections(w http.ResponseWriter, r *http.Request) {	
+func (cfg *ServerConfig) HandleChatConnect(w http.ResponseWriter, r *http.Request) {	
 	username := r.PathValue("username")
 	
 	_, usernameTaken := cfg.ChatClients[username]

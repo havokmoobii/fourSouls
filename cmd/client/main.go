@@ -1,6 +1,8 @@
 package main
 
-// Next time: Set up making a game room. Limit players to 4. Maybe make server able to host multiple games.
+// Next time: Establish connections before leaving first loop. Have the host have to run the start command for everyone to proceed. Maybe use a flag to check if game is started for the clients to expect
+// a different format of JSON response.
+// Idea: have a game started flag in client config to tell the WS listener to change its behavior after leaving the lobby to reduce the number of connections
 
 import (
 	"fmt"
@@ -18,19 +20,53 @@ func main() {
 
 	fmt.Println("Welcome to the Four Souls client!")
 
-	cfg.CheckServer()
-	
-	err := cfg.Connect()
+	gamelogic.PrintLobbyHelp()
+	err := cfg.CheckServer()
 	if err != nil {
-		// Error is handled in the function, so we can simply return.
-		return
+		fmt.Print("\nerror: ", err)
+		fmt.Println("\n")
 	}
-	defer cfg.Conn.Close()
 
-	fmt.Println("Success!")
+	for {
+		fmt.Print("> ")
+		words := gamelogic.GetInput()
+
+		switch words[0] {
+		case "create":
+			err = cfg.CreateRoom()
+			if err != nil {
+				fmt.Print("\nerror: ", err)
+				fmt.Println("\n")
+			}
+		case "join":
+			err = cfg.Connect()
+			if err != nil {
+				// Error is handled in the function, so we can simply return.
+				return
+			}
+		case "update":
+			err = cfg.CheckServer()
+			if err != nil {
+				fmt.Print("\nerror: ", err)
+				fmt.Println("\n")
+			}
+		case "quit":
+			return
+		case "help":
+			gamelogic.PrintLobbyHelp()
+			fmt.Println()
+		default:
+			fmt.Println("Unknown command")
+		}
+		if cfg.Username != "" {
+			break
+		}
+	} 
+	defer cfg.Conn.Close()
 
 	go cfg.ReceivePost()
 	go cfg.ReceiveChatPost()
+	gamelogic.PrintClientHelp()
 
 	// When player has priorty they will end each action with a call to post to update the rest of the players and pass priorty.
 	// Game state will be updated after each priority player action. Below will be a REPL loop. Messages to the clients will always provide a cursor to
@@ -44,9 +80,9 @@ func main() {
 		switch words[0] {
 		case "chat":
 			if len(words) > 1{
-				err = cfg.ChatPost(strings.Join(words[1:], " "))
+				err := cfg.ChatPost(strings.Join(words[1:], " "))
 				if err != nil {
-					fmt.Print("error:", err)
+					fmt.Print("error: ", err)
 				}
 			} 
 		case "quit":
@@ -60,6 +96,8 @@ func main() {
 				fmt.Println("write close:", err)
 			}
 			return
+		case "help":
+			gamelogic.PrintClientHelp()
 		default:
 			fmt.Println("Unknown command")
 		}
