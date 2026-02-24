@@ -66,7 +66,6 @@ func main() {
 	defer cfg.Conn.Close()
 
 	go cfg.ReceivePost()
-	go cfg.ReceiveChatPost()
 	gamelogic.PrintClientHelp()
 
 	// When player has priorty they will end each action with a call to post to update the rest of the players and pass priorty.
@@ -79,20 +78,49 @@ func main() {
 			continue
 		}
 		switch words[0] {
+		case "do":
+			err := cfg.SendPost(routing.Post{
+				GS:  cfg.GS,
+				Msg: routing.Message{
+					Sender: cfg.Username,
+				},
+			})
+			if err != nil {
+					fmt.Print("error: ", err)
+				}
 		case "chat":
 			if len(words) > 1{
-				err := cfg.ChatPost(strings.Join(words[1:], " "))
+				err := cfg.SendPost(routing.Post{
+					Msg: routing.Message{
+						Sender: cfg.Username,
+						Body:   strings.Join(words[1:], " "),
+					},
+				})
 				if err != nil {
 					fmt.Print("error: ", err)
 				}
-			} 
+			} else {
+				fmt.Print("\nerror: 'chat' must be followed by a message!\n\n> ")
+			}
+		case "dm":
+			if len(words) > 2{
+				// Once usernames are tracked in gamestate, check if valid recipient here
+				err := cfg.SendPost(routing.Post{
+					Msg: routing.Message{
+						Sender: cfg.Username,
+						Recipient: words[1],
+						Body:   strings.Join(words[2:], " "),
+					},
+				})
+				if err != nil {
+					fmt.Print("error: ", err)
+				}
+			} else {
+				fmt.Print("\nerror: 'dm' must be followed by a username and a message!\n\n> ")
+			}
 		case "quit":
 			cfg.CloseSignal = true
 			err = cfg.Conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				fmt.Println("write close:", err)
-			}
-			err = cfg.ChatConn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
 				fmt.Println("write close:", err)
 			}

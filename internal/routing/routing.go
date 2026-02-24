@@ -12,7 +12,6 @@ import (
 type ClientConfig struct {
 	client      http.Client
 	Conn        *websocket.Conn
-	ChatConn    *websocket.Conn
 	CloseSignal bool
 	Username    string
 	GS          gamelogic.GameState
@@ -116,7 +115,6 @@ func (cfg *ClientConfig) Connect() error {
 		username, err := gamelogic.ClientWelcome()
 
 		url := fmt.Sprintf("ws://localhost:1337/connect/%s", username)
-		chatUrl := fmt.Sprintf("ws://localhost:1337/chat/connect/%s", username)
 
 		fmt.Println("\nConnecting to server...")
 
@@ -134,22 +132,7 @@ func (cfg *ClientConfig) Connect() error {
 			return err
 		}
 
-		ChatConn, dialResp, err := websocket.DefaultDialer.Dial(chatUrl, nil)
-		if err != nil {
-			if dialResp != nil {
-				body, _ := io.ReadAll(dialResp.Body)
-				dialResp.Body.Close()
-
-				fmt.Printf("\nHTTP Status: %d %s\n", dialResp.StatusCode, http.StatusText(dialResp.StatusCode))
-				fmt.Printf("Server message: %s\n", string(body))
-				continue
-			}
-			fmt.Println("Dial error:", err)
-			return err
-		}
-
 		cfg.Conn = Conn
-		cfg.ChatConn = ChatConn
 		cfg.Username = username
 
 		fmt.Println("Success!")
@@ -170,7 +153,9 @@ func (cfg *ClientConfig) SendPost(pst Post) error {
 	return nil
 }
 
+// Rename this to ReceivePost when done
 func (cfg *ClientConfig) ReceivePost() {
+	// Maybe have a second loop before the game starts for different behavior?
 	for {
 		var pst Post
 		err := cfg.Conn.ReadJSON(&pst)
@@ -180,70 +165,34 @@ func (cfg *ClientConfig) ReceivePost() {
 		if err != nil {
 			fmt.Println("Read error:", err)
 		}
-		fmt.Println("Message Received")
-		fmt.Println("> ")
-		cfg.GS = pst.GS
-	}
-}
-
-func (cfg *ClientConfig) ChatPost(msg string) error {
-	err := cfg.ChatConn.WriteJSON(Message{
-		Sender: cfg.Username,
-		Body:   msg,
-	})
-	if err != nil {
-		fmt.Println("Write error:", err)
-		return err
-	}
-
-	return nil
-}
-
-// Can store everyone's usernames in GS to check if a recipient username is valid later.
-func (cfg *ClientConfig) ChatDM(recipient, msg string) error {
-	err := cfg.ChatConn.WriteJSON(Message{
-		Sender: cfg.Username,
-		Recipient: recipient,
-		Body:   msg,
-	})
-	if err != nil {
-		fmt.Println("Write error:", err)
-		return err
-	}
-
-	return nil
-}
-
-func (cfg *ClientConfig) ReceiveChatPost() {
-	for {
-		var msg Message
-		err := cfg.ChatConn.ReadJSON(&msg)
-		if cfg.CloseSignal {
-			return
-		}
-		if err != nil {
-			fmt.Println("Read error:", err)
-		}
-		if msg.Recipient == "" {
-			if cfg.Username == msg.Sender {
-				fmt.Printf("\n<%s> %s\n\n> ", msg.Sender, msg.Body)
-			} else {
-				fmt.Printf("\n\n<%s> %s\n\n> ", msg.Sender, msg.Body)
-			}
+		if pst.Msg.Body != "" {
+			cfg.printChat(pst.Msg)
 		} else {
-			if cfg.Username == msg.Recipient {
-				fmt.Printf("\n\n<<From:%s>> %s\n\n> ", msg.Sender, msg.Body)
+			if cfg.Username == pst.Msg.Sender{
+				fmt.Print("\nGameState updated!\n\n> ")
+			} else {
+				fmt.Print("\n\nGameState updated!\n\n> ")
 			}
-			if cfg.Username == msg.Sender {
-				fmt.Printf("\n\n<<To:%s>> %s\n\n> ", msg.Recipient, msg.Body)
-			}
-		}
-		
+			cfg.GS = pst.GS
+		}	
 	}
 }
 
-// Rename this to ReceivePost when done
-func (cfg *ClientConfig) ReceiveCombinedPost() {
-// Maybe have a second loop before the game starts for different behavior?
-// Look at message contents. If not "" then it is a message post. Maybe leave room to handle a post that is multiple types?
+func (cfg *ClientConfig) printChat(msg Message) {
+	// Normal chat message
+	if msg.Recipient == "" {
+		if cfg.Username == msg.Sender {
+			fmt.Printf("\n<%s> %s\n\n> ", msg.Sender, msg.Body)
+		} else {
+			fmt.Printf("\n\n<%s> %s\n\n> ", msg.Sender, msg.Body)
+		}
+	// Direct message to another user
+	} else {
+		if cfg.Username == msg.Sender {
+			fmt.Printf("\n<<To:%s>> %s\n\n> ", msg.Recipient, msg.Body)
+		}
+		if cfg.Username == msg.Recipient {
+			fmt.Printf("\n\n<<From:%s>> %s\n\n> ", msg.Sender, msg.Body)
+		}
+	}
 }

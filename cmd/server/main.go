@@ -21,7 +21,6 @@ func main() {
 
 	m.HandleFunc("/status", cfg.HandleStatus)
 	m.HandleFunc("/connect/{username}", cfg.HandleConnect)
-	m.HandleFunc("/chat/connect/{username}", cfg.HandleChatConnect)
 
 	srv := http.Server{
 		Handler:      m,

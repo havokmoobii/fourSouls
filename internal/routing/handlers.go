@@ -93,46 +93,6 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (cfg *ServerConfig) HandleChatConnect(w http.ResponseWriter, r *http.Request) {	
-	username := r.PathValue("username")
-	
-	_, usernameTaken := cfg.ChatClients[username]
-	if usernameTaken {
-		http.Error(w, "Username is taken", http.StatusBadRequest)
-		return
-	}
-	
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Println("Upgrade error:", err)
-		return
-	}
-	defer conn.Close()
-	
-	cfg.ChatClients[username] = conn
-
-	log.Println("Chat Client Successfully Connected")
-
-	for {
-		var msg interface{}
-		err := conn.ReadJSON(&msg)
-		if err != nil {
-			log.Println("Read error:", err)
-			delete(cfg.ChatClients, username)
-			break
-		}
-
-		log.Println(msg)
-
-		for _, client := range cfg.ChatClients {
-			if err := client.WriteJSON(msg); err != nil {
-				log.Println("Write error:", err)
-				break
-			}
-		}
-	}
-}
-
 func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	dat, err := json.Marshal(payload)

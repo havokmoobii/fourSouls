@@ -34,7 +34,10 @@ func PrintLobbyHelp() {
 func PrintClientHelp() {
 	fmt.Println()
 	fmt.Println("Possible commands:")
+	// Generic game action for test
+	fmt.Println("* do")
 	fmt.Println("* chat <message>")
+	fmt.Println("* dm <user> <message>")
 	fmt.Println("* quit")
 	fmt.Println("* help")
 	fmt.Print("\n> ")
