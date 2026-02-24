@@ -1,5 +1,6 @@
 package main
 
+// But Actually Next Time: Implement ReceiveCombinedPost
 // Next time: Establish connections before leaving first loop. Have the host have to run the start command for everyone to proceed. Maybe use a flag to check if game is started for the clients to expect
 // a different format of JSON response.
 // Idea: have a game started flag in client config to tell the WS listener to change its behavior after leaving the lobby to reduce the number of connections

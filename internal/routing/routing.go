@@ -18,7 +18,12 @@ type ClientConfig struct {
 	GS          gamelogic.GameState
 }
 
-type message struct {
+type Post struct {
+	GS  gamelogic.GameState
+	Msg Message
+}
+
+type Message struct {
 	Sender    string
 	Recipient string
 	Body      string
@@ -52,7 +57,7 @@ func (cfg *ClientConfig) CheckServer() error {
 	}
 
 	if len(status.Games[0].Users) == 0 {
-		fmt.Println("\nThe lobby is empty.")
+		fmt.Println("\nThe lobby is empty.\n")
 		return nil
 	}
 
@@ -93,7 +98,7 @@ func (cfg *ClientConfig) CreateRoom() error {
 	}
 
 	if len(status.Games[0].Users) == 0 {
-		fmt.Println("\nThe lobby is empty.")
+		fmt.Println("\nThe lobby is empty.\n")
 		return nil
 	}
 
@@ -113,7 +118,7 @@ func (cfg *ClientConfig) Connect() error {
 		url := fmt.Sprintf("ws://localhost:1337/connect/%s", username)
 		chatUrl := fmt.Sprintf("ws://localhost:1337/chat/connect/%s", username)
 
-		fmt.Println("Connecting to server...")
+		fmt.Println("\nConnecting to server...")
 
 		Conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
 		if err != nil {
@@ -147,7 +152,7 @@ func (cfg *ClientConfig) Connect() error {
 		cfg.ChatConn = ChatConn
 		cfg.Username = username
 
-		fmt.Println("Success!\n")
+		fmt.Println("Success!")
 
 		// Have the chat Connection post that the player has joined the game here 
 
@@ -155,8 +160,8 @@ func (cfg *ClientConfig) Connect() error {
 	}
 }
 
-func (cfg *ClientConfig) Post(msg gamelogic.GameState) error {
-	err := cfg.Conn.WriteJSON(msg)
+func (cfg *ClientConfig) SendPost(pst Post) error {
+	err := cfg.Conn.WriteJSON(pst)
 	if err != nil {
 		fmt.Println("Write error:", err)
 		return err
@@ -167,8 +172,8 @@ func (cfg *ClientConfig) Post(msg gamelogic.GameState) error {
 
 func (cfg *ClientConfig) ReceivePost() {
 	for {
-		var data gamelogic.GameState
-		err := cfg.Conn.ReadJSON(&data)
+		var pst Post
+		err := cfg.Conn.ReadJSON(&pst)
 		if cfg.CloseSignal {
 			return
 		}
@@ -177,12 +182,12 @@ func (cfg *ClientConfig) ReceivePost() {
 		}
 		fmt.Println("Message Received")
 		fmt.Println("> ")
-		cfg.GS = data
+		cfg.GS = pst.GS
 	}
 }
 
 func (cfg *ClientConfig) ChatPost(msg string) error {
-	err := cfg.ChatConn.WriteJSON(message{
+	err := cfg.ChatConn.WriteJSON(Message{
 		Sender: cfg.Username,
 		Body:   msg,
 	})
@@ -196,7 +201,7 @@ func (cfg *ClientConfig) ChatPost(msg string) error {
 
 // Can store everyone's usernames in GS to check if a recipient username is valid later.
 func (cfg *ClientConfig) ChatDM(recipient, msg string) error {
-	err := cfg.ChatConn.WriteJSON(message{
+	err := cfg.ChatConn.WriteJSON(Message{
 		Sender: cfg.Username,
 		Recipient: recipient,
 		Body:   msg,
@@ -211,7 +216,7 @@ func (cfg *ClientConfig) ChatDM(recipient, msg string) error {
 
 func (cfg *ClientConfig) ReceiveChatPost() {
 	for {
-		var msg message
+		var msg Message
 		err := cfg.ChatConn.ReadJSON(&msg)
 		if cfg.CloseSignal {
 			return
@@ -235,4 +240,10 @@ func (cfg *ClientConfig) ReceiveChatPost() {
 		}
 		
 	}
+}
+
+// Rename this to ReceivePost when done
+func (cfg *ClientConfig) ReceiveCombinedPost() {
+// Maybe have a second loop before the game starts for different behavior?
+// Look at message contents. If not "" then it is a message post. Maybe leave room to handle a post that is multiple types?
 }
