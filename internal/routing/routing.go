@@ -12,14 +12,24 @@ import (
 type ClientConfig struct {
 	client      http.Client
 	Conn        *websocket.Conn
+	StartSignal bool
 	CloseSignal bool
 	Username    string
 	GS          gamelogic.GameState
 }
 
+type PostKind int
+
+const (
+	PostGameStart PostKind = iota
+	PostStateUpdate
+	PostChat
+)
+
 type Post struct {
-	GS  gamelogic.GameState
-	Msg Message
+	Kind PostKind
+	GS   gamelogic.GameState
+	Msg  Message
 }
 
 type Message struct {
@@ -112,9 +122,7 @@ func (cfg *ClientConfig) CreateRoom() error {
 
 func (cfg *ClientConfig) Connect() error {
 	for {
-		username, err := gamelogic.ClientWelcome()
-
-		url := fmt.Sprintf("ws://localhost:1337/connect/%s", username)
+		url := fmt.Sprintf("ws://localhost:1337/connect/%s", cfg.Username)
 
 		fmt.Println("\nConnecting to server...")
 
@@ -133,7 +141,6 @@ func (cfg *ClientConfig) Connect() error {
 		}
 
 		cfg.Conn = Conn
-		cfg.Username = username
 
 		fmt.Println("Success!")
 
@@ -153,7 +160,6 @@ func (cfg *ClientConfig) SendPost(pst Post) error {
 	return nil
 }
 
-// Rename this to ReceivePost when done
 func (cfg *ClientConfig) ReceivePost() {
 	// Maybe have a second loop before the game starts for different behavior?
 	for {
@@ -165,9 +171,13 @@ func (cfg *ClientConfig) ReceivePost() {
 		if err != nil {
 			fmt.Println("Read error:", err)
 		}
-		if pst.Msg.Body != "" {
+		if pst.Kind == PostGameStart {
+			cfg.StartSignal = true
+		}
+		if pst.Kind == PostChat {
 			cfg.printChat(pst.Msg)
-		} else {
+		}
+		if pst.Kind == PostStateUpdate {
 			if cfg.Username == pst.Msg.Sender{
 				fmt.Print("\nGameState updated!\n\n> ")
 			} else {

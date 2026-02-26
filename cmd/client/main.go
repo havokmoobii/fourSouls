@@ -1,8 +1,9 @@
 package main
 
 // But Actually Next Time: Implement ReceiveCombinedPost
-// Next time: Establish connections before leaving first loop. Have the host have to run the start command for everyone to proceed. Maybe use a flag to check if game is started for the clients to expect
-// a different format of JSON response.
+// Next time: Figure out timing with starting game and the menu. Currently it loops back to the menu before the start game command registers
+// Idea: Use a channel for the above problem. Have the program halt after the start command and the reciever can send the proceed command. Would probably cause
+//     Issues with the other clients though.
 // Idea: have a game started flag in client config to tell the WS listener to change its behavior after leaving the lobby to reduce the number of connections
 
 import (
@@ -16,13 +17,20 @@ import (
 func main() {
 	cfg := routing.ClientConfig{
 		GS:          gamelogic.GameState{},
+		StartSignal: false,
 		CloseSignal: false,
 	}
 
 	fmt.Println("Welcome to the Four Souls client!")
 
+	var err error
+	cfg.Username, err = gamelogic.ClientWelcome()
+	if err != nil {
+		return
+	}
+
 	gamelogic.PrintLobbyHelp()
-	err := cfg.CheckServer()
+	err = cfg.CheckServer()
 	if err != nil {
 		fmt.Print("\nerror: ", err)
 		fmt.Println("\n")
@@ -31,7 +39,9 @@ func main() {
 	for {
 		fmt.Print("> ")
 		words := gamelogic.GetInput()
-
+		if len(words) == 0 {
+			continue
+		}
 		switch words[0] {
 		case "create":
 			err = cfg.CreateRoom()
@@ -45,11 +55,19 @@ func main() {
 				// Error is handled in the function, so we can simply return.
 				return
 			}
+			go cfg.ReceivePost()
 		case "update":
 			err = cfg.CheckServer()
 			if err != nil {
 				fmt.Print("\nerror: ", err)
 				fmt.Println("\n")
+			}
+		case "start":
+			err = cfg.SendPost(routing.Post{
+				Kind: routing.PostGameStart,
+			})
+			if err != nil {
+				fmt.Print("error: ", err)
 			}
 		case "quit":
 			return
@@ -59,13 +77,13 @@ func main() {
 		default:
 			fmt.Println("Unknown command")
 		}
-		if cfg.Username != "" {
+		if cfg.StartSignal {
 			break
 		}
 	} 
 	defer cfg.Conn.Close()
 
-	go cfg.ReceivePost()
+	
 	gamelogic.PrintClientHelp()
 
 	// When player has priorty they will end each action with a call to post to update the rest of the players and pass priorty.
@@ -79,9 +97,10 @@ func main() {
 		}
 		switch words[0] {
 		case "do":
-			err := cfg.SendPost(routing.Post{
-				GS:  cfg.GS,
-				Msg: routing.Message{
+			err = cfg.SendPost(routing.Post{
+				Kind: routing.PostStateUpdate,
+				GS:   cfg.GS,
+				Msg:  routing.Message{
 					Sender: cfg.Username,
 				},
 			})
@@ -90,8 +109,9 @@ func main() {
 				}
 		case "chat":
 			if len(words) > 1{
-				err := cfg.SendPost(routing.Post{
-					Msg: routing.Message{
+				err = cfg.SendPost(routing.Post{
+					Kind:   routing.PostChat,
+					Msg:    routing.Message{
 						Sender: cfg.Username,
 						Body:   strings.Join(words[1:], " "),
 					},
@@ -105,8 +125,9 @@ func main() {
 		case "dm":
 			if len(words) > 2{
 				// Once usernames are tracked in gamestate, check if valid recipient here
-				err := cfg.SendPost(routing.Post{
-					Msg: routing.Message{
+				err = cfg.SendPost(routing.Post{
+					Kind:   routing.PostChat,
+					Msg:    routing.Message{
 						Sender: cfg.Username,
 						Recipient: words[1],
 						Body:   strings.Join(words[2:], " "),
