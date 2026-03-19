@@ -142,7 +142,7 @@ func (cfg *ClientConfig) Connect() error {
 
 		cfg.Conn = Conn
 
-		fmt.Println("Success!")
+		fmt.Println("Success!\n")
 
 		// Have the chat Connection post that the player has joined the game here 
 

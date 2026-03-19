@@ -1,7 +1,7 @@
 package main
 
-// But Actually Next Time: Implement ReceiveCombinedPost
 // Next time: Figure out timing with starting game and the menu. Currently it loops back to the menu before the start game command registers
+// 			  Make it possible to make multiple rooms.
 // Idea: Use a channel for the above problem. Have the program halt after the start command and the reciever can send the proceed command. Would probably cause
 //     Issues with the other clients though.
 // Idea: have a game started flag in client config to tell the WS listener to change its behavior after leaving the lobby to reduce the number of connections
@@ -56,6 +56,13 @@ func main() {
 				return
 			}
 			go cfg.ReceivePost()
+
+			// Replace this with logic to show the game room the player has joined.
+			err = cfg.CheckServer()
+			if err != nil {
+				fmt.Print("\nerror: ", err)
+				fmt.Println("\n")
+			}
 		case "update":
 			err = cfg.CheckServer()
 			if err != nil {
@@ -75,7 +82,7 @@ func main() {
 			gamelogic.PrintLobbyHelp()
 			fmt.Println()
 		default:
-			fmt.Println("Unknown command")
+			fmt.Println("\nUnknown command\n")
 		}
 		if cfg.StartSignal {
 			break
