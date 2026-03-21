@@ -9,6 +9,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"strconv"
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 	"github.com/havokmoobii/fourSouls/internal/routing"
@@ -50,15 +51,17 @@ func main() {
 				fmt.Println("\n")
 			}
 		case "join":
-			err = cfg.Connect()
-			if err != nil {
-				// Error is handled in the function, so we can simply return.
-				return
+			if len(words) < 2 {
+				fmt.Println("join command must include a room number!\n")
+				continue
 			}
-			go cfg.ReceivePost()
 
-			// Replace this with logic to show the game room the player has joined.
-			err = cfg.CheckServer()
+			val, err := strconv.Atoi(words[1])
+			if err != nil {
+				fmt.Println("join command must include a room number!\n")
+			}
+
+			err = cfg.JoinRoom(val)
 			if err != nil {
 				fmt.Print("\nerror: ", err)
 				fmt.Println("\n")
