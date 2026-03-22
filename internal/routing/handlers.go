@@ -9,33 +9,56 @@ import (
 
 type ServerConfig struct {
 	Clients     map[string]*websocket.Conn
-	ChatClients map[string]*websocket.Conn
+	Rooms       []room
 }
 
 type room struct {
 	clients     map[string]*websocket.Conn
-	chatClients map[string]*websocket.Conn
+	game        Game
+}
+
+type RoomsPostResponse struct {
+	RoomNumber int
 }
 
 type ServerStatusResp struct {
-	Games []Games
+	Games []Game
 }
 
-type Games struct {
+type Game struct {
 	State string
 	Users []string
 }
 
-func (cfg *ServerConfig) HandleStatus(w http.ResponseWriter, r *http.Request) {
+func (cfg *ServerConfig) HandleRooms(w http.ResponseWriter, r *http.Request) {
 	status := ServerStatusResp{}
 
-	status.Games = append(status.Games, Games{})
-
-	status.Games[0].State = "Waiting to Start"
-
-	for username, _ := range cfg.Clients {
-		status.Games[0].Users = append(status.Games[0].Users, username)
+	if len(cfg.Rooms) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
+
+	for _, room := range cfg.Rooms {
+		status.Games = append(status.Games, room.game)
+ 	}
+
+	log.Println("Responding to a Status Request")
+
+	respondWithJSON(w, http.StatusOK, status)
+}
+
+func (cfg *ServerConfig) HandleRoomsCreate(w http.ResponseWriter, r *http.Request) {
+	status := ServerStatusResp{}
+
+	cfg.Rooms = append(cfg.Rooms, room{
+		game: Game{
+			State: "Waiting to Start",
+		},
+	})
+
+	for _, room := range cfg.Rooms {
+		status.Games = append(status.Games, room.game)
+ 	}
 
 	log.Println("Responding to a Status Request")
 

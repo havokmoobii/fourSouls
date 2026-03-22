@@ -12,14 +12,14 @@ import (
 func main() {
 	cfg := routing.ServerConfig{
 		Clients:     make(map[string]*websocket.Conn),
-		ChatClients: make(map[string]*websocket.Conn),
 	}
 
 	m := http.NewServeMux()
 
 	port := "1337"
 
-	m.HandleFunc("/status", cfg.HandleStatus)
+	m.HandleFunc("GET /rooms", cfg.HandleRooms)
+	m.HandleFunc("POST /rooms", cfg.HandleRoomsCreate)
 	m.HandleFunc("/connect/{username}", cfg.HandleConnect)
 
 	srv := http.Server{

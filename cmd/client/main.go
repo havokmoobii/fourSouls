@@ -1,5 +1,9 @@
 package main
 
+// Actually Next Time: Players can now create new rooms. The create command should also join the newly created room. Probably need to user a header to tell
+// the server what room to join.
+//
+// See if Below is still a problem
 // Next time: Figure out timing with starting game and the menu. Currently it loops back to the menu before the start game command registers
 // 			  Make it possible to make multiple rooms.
 // Idea: Use a channel for the above problem. Have the program halt after the start command and the reciever can send the proceed command. Would probably cause

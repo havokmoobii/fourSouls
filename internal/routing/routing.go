@@ -72,7 +72,7 @@ func (cfg *ClientConfig) Connect() error {
 }
 
 func (cfg *ClientConfig) CheckServer() error {
-	url := "http://localhost:1337/status"
+	url := "http://localhost:1337/rooms"
 
 	if cfg.GameRoomNum == 0 {
 		fmt.Println("\nChecking server for existing games...")
@@ -97,29 +97,35 @@ func (cfg *ClientConfig) CheckServer() error {
 	status := ServerStatusResp{}
 	err = json.Unmarshal(dat, &status)
 	if err != nil {
+		if resp.StatusCode == http.StatusNoContent {
+			fmt.Println("\nThe lobby is empty.\n")
+			return nil
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		fmt.Printf("\nHTTP Status: %d %s\n", resp.StatusCode, http.StatusText(resp.StatusCode))
+		fmt.Printf("Server message: %s\n", string(body))
 		return err
 	}
 
-	if len(status.Games[0].Users) == 0 {
-		fmt.Println("\nThe lobby is empty.\n")
-		return nil
+	for roomNumber, game := range status.Games {
+		fmt.Printf("\nGameroom %v:\n", roomNumber + 1)
+		for _, user := range game.Users {
+			fmt.Println(user)
+		}
+		fmt.Println()
 	}
 
-	fmt.Println("\nGameroom 1:", status.Games[0].State)
-	for _, user := range status.Games[0].Users {
-		fmt.Println(user)
-	}
-	fmt.Println()
-	
 	return nil
 }
 
 func (cfg *ClientConfig) CreateRoom() error {
-	url := "http://localhost:1337/room"
+	url := "http://localhost:1337/rooms"
 
 	fmt.Println("\nCreating and joining new Gameroom...")
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
 	}
@@ -141,16 +147,12 @@ func (cfg *ClientConfig) CreateRoom() error {
 		return err
 	}
 
-	if len(status.Games[0].Users) == 0 {
-		fmt.Println("\nThe lobby is empty.\n")
-		return nil
+	for roomNumber, game := range status.Games {
+		fmt.Println("Gameroom", roomNumber + 1)
+		for _, user := range game.Users {
+			fmt.Println(user)
+		}
 	}
-
-	fmt.Println("\nGameroom 1:", status.Games[0].State)
-	for _, user := range status.Games[0].Users {
-		fmt.Println(user)
-	}
-	fmt.Println()
 	
 	return nil
 }
