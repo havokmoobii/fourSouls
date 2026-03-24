@@ -15,7 +15,6 @@ type ClientConfig struct {
 	StartSignal bool
 	CloseSignal bool
 	Username    string
-	GameRoomNum int
 	GS          gamelogic.GameState
 }
 
@@ -30,7 +29,6 @@ const (
 
 type Post struct {
 	Kind        PostKind
-	GameRoomNum int
 	GS          gamelogic.GameState
 	Msg         Message
 }
@@ -41,21 +39,25 @@ type Message struct {
 	Body      string
 }
 
-func (cfg *ClientConfig) Connect() error {
+func (cfg *ClientConfig) Connect(roomNumber string) error {
 	for {
 		url := fmt.Sprintf("ws://localhost:1337/connect/%s", cfg.Username)
 
+		headers := http.Header{}
+		headers.Add("Room", roomNumber)
+
 		fmt.Println("\nConnecting to server...\n")
 
-		Conn, dialResp, err := websocket.DefaultDialer.Dial(url, nil)
+		Conn, dialResp, err := websocket.DefaultDialer.Dial(url, headers)
 		if err != nil {
 			if dialResp != nil {
+				defer dialResp.Body.Close()
 				body, _ := io.ReadAll(dialResp.Body)
-				dialResp.Body.Close()
-
+				
 				fmt.Printf("\nHTTP Status: %d %s\n", dialResp.StatusCode, http.StatusText(dialResp.StatusCode))
 				fmt.Printf("Server message: %s\n", string(body))
-				continue
+
+				return err
 			}
 			fmt.Println("Dial error:", err)
 			return err
@@ -73,10 +75,6 @@ func (cfg *ClientConfig) Connect() error {
 
 func (cfg *ClientConfig) CheckServer() error {
 	url := "http://localhost:1337/rooms"
-
-	if cfg.GameRoomNum == 0 {
-		fmt.Println("\nChecking server for existing games...")
-	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -141,42 +139,26 @@ func (cfg *ClientConfig) CreateRoom() error {
 		return err
 	}
 
-	status := ServerStatusResp{}
-	err = json.Unmarshal(dat, &status)
+	roomsResp := RoomsPostResponse{}
+	err = json.Unmarshal(dat, &roomsResp)
 	if err != nil {
 		return err
 	}
 
-	for roomNumber, game := range status.Games {
-		fmt.Println("Gameroom", roomNumber + 1)
-		for _, user := range game.Users {
-			fmt.Println(user)
-		}
+	err = cfg.JoinRoom(string(roomsResp.RoomNumber) + "0")
+	if err != nil {
+		fmt.Println("Unable to join newly created room:", err)
 	}
-	
+
 	return nil
 }
 
-func (cfg *ClientConfig) JoinRoom(roomNumber int) error {
-
-
-
-
-
-	// Next time: Figure out parameters to get the server to see room numbers and make seperate games.
-	// Failing that we can do with the current implementation of all clients recieving all messages and just ingnoring the ones from other games.
-	// that seems kinda sloppy though...
-
-
-
-
-	err := cfg.Connect()
+func (cfg *ClientConfig) JoinRoom(roomNumber string) error {
+	err := cfg.Connect(roomNumber)
 			if err != nil {
-				fmt.Println("Unable to connect to server:", err)
+				fmt.Printf("Unable to join room %s: %v\n", roomNumber, err)
 				return err
 			}
-
-	cfg.GameRoomNum = roomNumber
 	
 	err = cfg.SendPost(Post{
 			Kind: PostPlayerJoined,
@@ -206,11 +188,6 @@ func (cfg *ClientConfig) ReceivePost() {
 	for {
 		var pst Post
 		err := cfg.Conn.ReadJSON(&pst)
-
-		// Only Recieve messages from your game.
-		if pst.GameRoomNum != cfg.GameRoomNum{
-			continue
-		}
 
 		if cfg.CloseSignal {
 			return

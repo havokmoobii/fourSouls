@@ -1,7 +1,7 @@
 package main
 
-// Actually Next Time: Players can now create new rooms. The create command should also join the newly created room. Probably need to user a header to tell
-// the server what room to join.
+// Actually Next Time: Sending headers over the websocket connection isnt working. Continue to diagnose that or send a unique JSON message after connecting to set the room 
+// (not ideal because we want to reject the connection if room is fake)
 //
 // See if Below is still a problem
 // Next time: Figure out timing with starting game and the menu. Currently it loops back to the menu before the start game command registers
@@ -13,7 +13,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"strconv"
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 	"github.com/havokmoobii/fourSouls/internal/routing"
@@ -60,12 +59,7 @@ func main() {
 				continue
 			}
 
-			val, err := strconv.Atoi(words[1])
-			if err != nil {
-				fmt.Println("join command must include a room number!\n")
-			}
-
-			err = cfg.JoinRoom(val)
+			err = cfg.JoinRoom(words[1])
 			if err != nil {
 				fmt.Print("\nerror: ", err)
 				fmt.Println("\n")

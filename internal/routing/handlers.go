@@ -48,21 +48,19 @@ func (cfg *ServerConfig) HandleRooms(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ServerConfig) HandleRoomsCreate(w http.ResponseWriter, r *http.Request) {
-	status := ServerStatusResp{}
-
 	cfg.Rooms = append(cfg.Rooms, room{
 		game: Game{
 			State: "Waiting to Start",
 		},
 	})
 
-	for _, room := range cfg.Rooms {
-		status.Games = append(status.Games, room.game)
- 	}
+	resp := RoomsPostResponse{
+		RoomNumber: len(cfg.Rooms),
+	}
 
-	log.Println("Responding to a Status Request")
+	log.Println("Responding to a room creation request")
 
-	respondWithJSON(w, http.StatusOK, status)
+	respondWithJSON(w, http.StatusOK, resp)
 }
 
 var upgrader = websocket.Upgrader{
@@ -73,14 +71,20 @@ var upgrader = websocket.Upgrader{
 
 func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {	
 	username := r.PathValue("username")
+
+	roomNumber := r.Header["Room"]
+
+	log.Println("Recieved a connection request from", username, "to join room", roomNumber)
 	
 	_, usernameTaken := cfg.Clients[username]
 	if usernameTaken {
+		log.Println("Responding to a failed connection request: Username is taken")
 		http.Error(w, "Username is taken", http.StatusBadRequest)
 		return
 	}
 
 	if len(cfg.Clients) > 3 {
+		log.Println("Responding to a failed connection request: Only 4 players can play per game")
 		http.Error(w, "Only 4 players can play per game", http.StatusBadRequest)
 		return
 	}
