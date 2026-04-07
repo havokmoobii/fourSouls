@@ -1,10 +1,12 @@
 package routing
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"encoding/json"
+	"strconv"
+
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
@@ -15,6 +17,7 @@ type ClientConfig struct {
 	StartSignal bool
 	CloseSignal bool
 	Username    string
+	RoomNumber  int
 	GS          gamelogic.GameState
 }
 
@@ -22,15 +25,15 @@ type PostKind int
 
 const (
 	PostPlayerJoined PostKind = iota
-	PostGameStart 
+	PostGameStart
 	PostStateUpdate
 	PostChat
 )
 
 type Post struct {
-	Kind        PostKind
-	GS          gamelogic.GameState
-	Msg         Message
+	Kind PostKind
+	GS   gamelogic.GameState
+	Msg  Message
 }
 
 type Message struct {
@@ -40,37 +43,41 @@ type Message struct {
 }
 
 func (cfg *ClientConfig) Connect(roomNumber string) error {
-	for {
-		url := fmt.Sprintf("ws://localhost:1337/connect/%s", cfg.Username)
+	roomNumberInt, err := strconv.Atoi(roomNumber)
+	if err != nil {
+		return err
+	}
 
-		headers := http.Header{}
-		headers.Add("Room", roomNumber)
+	url := fmt.Sprintf("ws://localhost:1337/connect/%s", cfg.Username)
 
-		fmt.Println("\nConnecting to server...\n")
+	headers := http.Header{}
+	headers.Add("Room", roomNumber)
 
-		Conn, dialResp, err := websocket.DefaultDialer.Dial(url, headers)
-		if err != nil {
-			if dialResp != nil {
-				defer dialResp.Body.Close()
-				body, _ := io.ReadAll(dialResp.Body)
-				
-				fmt.Printf("\nHTTP Status: %d %s\n", dialResp.StatusCode, http.StatusText(dialResp.StatusCode))
-				fmt.Printf("Server message: %s\n", string(body))
+	fmt.Println("\nConnecting to server...")
 
-				return err
-			}
-			fmt.Println("Dial error:", err)
+	Conn, dialResp, err := websocket.DefaultDialer.Dial(url, headers)
+	if err != nil {
+		if dialResp != nil {
+			defer dialResp.Body.Close()
+			body, _ := io.ReadAll(dialResp.Body)
+
+			fmt.Printf("\nHTTP Status: %d %s\n", dialResp.StatusCode, http.StatusText(dialResp.StatusCode))
+			fmt.Printf("Server message: %s\n", string(body))
+
 			return err
 		}
-
-		cfg.Conn = Conn
-
-		fmt.Println("Success!")
-
-		go cfg.ReceivePost()
-
-		return nil
+		fmt.Println("Dial error:", err)
+		return err
 	}
+
+	cfg.Conn = Conn
+	cfg.RoomNumber = roomNumberInt
+
+	fmt.Println("Success!")
+
+	go cfg.ReceivePost()
+
+	return nil
 }
 
 func (cfg *ClientConfig) CheckServer() error {
@@ -96,7 +103,7 @@ func (cfg *ClientConfig) CheckServer() error {
 	err = json.Unmarshal(dat, &status)
 	if err != nil {
 		if resp.StatusCode == http.StatusNoContent {
-			fmt.Println("\nThe lobby is empty.\n")
+			fmt.Println("\nThe lobby is empty.")
 			return nil
 		}
 		body, _ := io.ReadAll(resp.Body)
@@ -108,7 +115,7 @@ func (cfg *ClientConfig) CheckServer() error {
 	}
 
 	for roomNumber, game := range status.Games {
-		fmt.Printf("\nGameroom %v:\n", roomNumber + 1)
+		fmt.Printf("\nGameroom %v:\n", roomNumber+1)
 		for _, user := range game.Users {
 			fmt.Println(user)
 		}
@@ -145,7 +152,7 @@ func (cfg *ClientConfig) CreateRoom() error {
 		return err
 	}
 
-	err = cfg.JoinRoom(string(roomsResp.RoomNumber) + "0")
+	err = cfg.JoinRoom(strconv.Itoa(roomsResp.RoomNumber))
 	if err != nil {
 		fmt.Println("Unable to join newly created room:", err)
 	}
@@ -155,22 +162,22 @@ func (cfg *ClientConfig) CreateRoom() error {
 
 func (cfg *ClientConfig) JoinRoom(roomNumber string) error {
 	err := cfg.Connect(roomNumber)
-			if err != nil {
-				fmt.Printf("Unable to join room %s: %v\n", roomNumber, err)
-				return err
-			}
-	
+	if err != nil {
+		fmt.Printf("Unable to join room %s: %v\n", roomNumber, err)
+		return err
+	}
+
 	err = cfg.SendPost(Post{
-			Kind: PostPlayerJoined,
-			Msg: Message{
-				Sender: cfg.Username,
-			},
-		})
+		Kind: PostPlayerJoined,
+		Msg: Message{
+			Sender: cfg.Username,
+		},
+	})
 	if err != nil {
 		return err
 	}
 
-	return nil	
+	return nil
 }
 
 func (cfg *ClientConfig) SendPost(pst Post) error {
@@ -205,13 +212,13 @@ func (cfg *ClientConfig) ReceivePost() {
 			cfg.printChat(pst.Msg)
 		}
 		if pst.Kind == PostStateUpdate {
-			if cfg.Username == pst.Msg.Sender{
+			if cfg.Username == pst.Msg.Sender {
 				fmt.Print("\nGameState updated!\n\n> ")
 			} else {
 				fmt.Print("\n\nGameState updated!\n\n> ")
 			}
 			cfg.GS = pst.GS
-		}	
+		}
 	}
 }
 
@@ -223,7 +230,7 @@ func (cfg *ClientConfig) printChat(msg Message) {
 		} else {
 			fmt.Printf("\n\n<%s> %s\n\n> ", msg.Sender, msg.Body)
 		}
-	// Direct message to another user
+		// Direct message to another user
 	} else {
 		if cfg.Username == msg.Sender {
 			fmt.Printf("\n<<To:%s>> %s\n\n> ", msg.Recipient, msg.Body)

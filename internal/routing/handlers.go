@@ -1,20 +1,22 @@
 package routing
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
-	"encoding/json"
+	"strconv"
+
 	"github.com/gorilla/websocket"
 )
 
 type ServerConfig struct {
-	Clients     map[string]*websocket.Conn
-	Rooms       []room
+	Clients map[string]*websocket.Conn
+	Rooms   []room
 }
 
 type room struct {
-	clients     map[string]*websocket.Conn
-	game        Game
+	clients map[string]*websocket.Conn
+	state   string
 }
 
 type RoomsPostResponse struct {
@@ -38,9 +40,13 @@ func (cfg *ServerConfig) HandleRooms(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, room := range cfg.Rooms {
-		status.Games = append(status.Games, room.game)
- 	}
+	for roomNumber, room := range cfg.Rooms {
+		status.Games = append(status.Games, Game{})
+		status.Games[roomNumber].State = room.state
+		for username := range room.clients {
+			status.Games[roomNumber].Users = append(status.Games[roomNumber].Users, username)
+		}
+	}
 
 	log.Println("Responding to a Status Request")
 
@@ -49,9 +55,8 @@ func (cfg *ServerConfig) HandleRooms(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ServerConfig) HandleRoomsCreate(w http.ResponseWriter, r *http.Request) {
 	cfg.Rooms = append(cfg.Rooms, room{
-		game: Game{
-			State: "Waiting to Start",
-		},
+		clients: make(map[string]*websocket.Conn),
+		state:   "Waiting to Start",
 	})
 
 	resp := RoomsPostResponse{
@@ -64,18 +69,22 @@ func (cfg *ServerConfig) HandleRoomsCreate(w http.ResponseWriter, r *http.Reques
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool { return true },
-	ReadBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
+	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
-func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {	
+func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 
-	roomNumber := r.Header["Room"]
+	roomNumber, err := strconv.Atoi(r.Header["Room"][0])
+	if err != nil {
+		http.Error(w, "Malformed header", http.StatusBadRequest)
+		return
+	}
 
 	log.Println("Recieved a connection request from", username, "to join room", roomNumber)
-	
+
 	_, usernameTaken := cfg.Clients[username]
 	if usernameTaken {
 		log.Println("Responding to a failed connection request: Username is taken")
@@ -83,29 +92,30 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(cfg.Clients) > 3 {
+	if len(cfg.Rooms[roomNumber-1].clients) > 3 {
 		log.Println("Responding to a failed connection request: Only 4 players can play per game")
 		http.Error(w, "Only 4 players can play per game", http.StatusBadRequest)
 		return
 	}
-	
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("Upgrade error:", err)
 		return
 	}
 	defer conn.Close()
-	
-	cfg.Clients[username] = conn
+
+	cfg.Rooms[roomNumber-1].clients[username] = conn
 
 	log.Println("Client Successfully Connected")
 
 	for {
 		var msg interface{}
-		err := conn.ReadJSON(&msg)
+		err = conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Read error:", err)
-			delete(cfg.Clients, username)
+			log.Println("Removing disconnected user", username, "from room", roomNumber)
+			delete(cfg.Rooms[roomNumber-1].clients, username)
 			break
 		}
 
@@ -131,4 +141,3 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.WriteHeader(code)
 	w.Write(dat)
 }
-

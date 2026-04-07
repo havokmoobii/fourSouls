@@ -1,18 +1,28 @@
 package main
 
-// Actually Next Time: Sending headers over the websocket connection isnt working. Continue to diagnose that or send a unique JSON message after connecting to set the room 
-// (not ideal because we want to reject the connection if room is fake)
+// Next Time:
+// Make it so empty rooms delete themselves. Maybe without
+// reshuffling room numbers. Might make it so a create command will see an
+// empty inbetween room and occupy it.
+//
+// Look at the payload server side when someone joins a room and see what that is doing
 //
 // See if Below is still a problem
-// Next time: Figure out timing with starting game and the menu. Currently it loops back to the menu before the start game command registers
-// 			  Make it possible to make multiple rooms.
-// Idea: Use a channel for the above problem. Have the program halt after the start command and the reciever can send the proceed command. Would probably cause
-//     Issues with the other clients though.
-// Idea: have a game started flag in client config to tell the WS listener to change its behavior after leaving the lobby to reduce the number of connections
+// Next time: Figure out timing with starting game and the menu.
+// Currently it loops back to the menu before the start game command registers
+// Make it possible to make multiple rooms.
+//
+// Idea: Use a channel for the above problem.
+// Have the program halt after the start command and the reciever can send the
+// proceed command. Would probably cause issues with the other clients though.
+//
+// Idea: have a game started flag in client config to tell the WS listener to change its
+// behavior after leaving the lobby to reduce the number of connections
 
 import (
 	"fmt"
 	"strings"
+
 	"github.com/gorilla/websocket"
 	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 	"github.com/havokmoobii/fourSouls/internal/routing"
@@ -37,7 +47,7 @@ func main() {
 	err = cfg.CheckServer()
 	if err != nil {
 		fmt.Print("\nerror: ", err)
-		fmt.Println("\n")
+		fmt.Println()
 	}
 
 	for {
@@ -48,27 +58,34 @@ func main() {
 		}
 		switch words[0] {
 		case "create":
+			if cfg.RoomNumber != 0 {
+				fmt.Println("Cannot join multiple rooms!")
+				continue
+			}
 			err = cfg.CreateRoom()
 			if err != nil {
 				fmt.Print("\nerror: ", err)
-				fmt.Println("\n")
+				fmt.Println()
 			}
 		case "join":
 			if len(words) < 2 {
-				fmt.Println("join command must include a room number!\n")
+				fmt.Println("Join command must include a room number!")
 				continue
 			}
-
+			if cfg.RoomNumber != 0 {
+				fmt.Println("Cannot join multiple rooms!")
+				continue
+			}
 			err = cfg.JoinRoom(words[1])
 			if err != nil {
 				fmt.Print("\nerror: ", err)
-				fmt.Println("\n")
+				fmt.Println()
 			}
 		case "update":
 			err = cfg.CheckServer()
 			if err != nil {
 				fmt.Print("\nerror: ", err)
-				fmt.Println("\n")
+				fmt.Println()
 			}
 		case "start":
 			err = cfg.SendPost(routing.Post{
@@ -83,15 +100,14 @@ func main() {
 			gamelogic.PrintLobbyHelp()
 			fmt.Println()
 		default:
-			fmt.Println("\nUnknown command\n")
+			fmt.Println("\nUnknown command")
 		}
 		if cfg.StartSignal {
 			break
 		}
-	} 
+	}
 	defer cfg.Conn.Close()
 
-	
 	gamelogic.PrintClientHelp()
 
 	// When player has priorty they will end each action with a call to post to update the rest of the players and pass priorty.
@@ -108,18 +124,18 @@ func main() {
 			err = cfg.SendPost(routing.Post{
 				Kind: routing.PostStateUpdate,
 				GS:   cfg.GS,
-				Msg:  routing.Message{
+				Msg: routing.Message{
 					Sender: cfg.Username,
 				},
 			})
 			if err != nil {
-					fmt.Print("error: ", err)
-				}
+				fmt.Print("error: ", err)
+			}
 		case "chat":
-			if len(words) > 1{
+			if len(words) > 1 {
 				err = cfg.SendPost(routing.Post{
-					Kind:   routing.PostChat,
-					Msg:    routing.Message{
+					Kind: routing.PostChat,
+					Msg: routing.Message{
 						Sender: cfg.Username,
 						Body:   strings.Join(words[1:], " "),
 					},
@@ -131,14 +147,14 @@ func main() {
 				fmt.Print("\nerror: 'chat' must be followed by a message!\n\n> ")
 			}
 		case "dm":
-			if len(words) > 2{
+			if len(words) > 2 {
 				// Once usernames are tracked in gamestate, check if valid recipient here
 				err = cfg.SendPost(routing.Post{
-					Kind:   routing.PostChat,
-					Msg:    routing.Message{
-						Sender: cfg.Username,
+					Kind: routing.PostChat,
+					Msg: routing.Message{
+						Sender:    cfg.Username,
 						Recipient: words[1],
-						Body:   strings.Join(words[2:], " "),
+						Body:      strings.Join(words[2:], " "),
 					},
 				})
 				if err != nil {
