@@ -1,11 +1,8 @@
 package main
 
 // Next Time:
-// Make it so empty rooms delete themselves. Maybe without
-// reshuffling room numbers. Might make it so a create command will see an
-// empty inbetween room and occupy it.
-//
 // Look at the payload server side when someone joins a room and see what that is doing
+// Figure out why the start command doesn't work anymore.
 //
 // See if Below is still a problem
 // Next time: Figure out timing with starting game and the menu.

@@ -54,13 +54,28 @@ func (cfg *ServerConfig) HandleRooms(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ServerConfig) HandleRoomsCreate(w http.ResponseWriter, r *http.Request) {
-	cfg.Rooms = append(cfg.Rooms, room{
-		clients: make(map[string]*websocket.Conn),
-		state:   "Waiting to Start",
-	})
+	roomToOccupy := -1
+
+	for roomNumber, room := range cfg.Rooms {
+		if len(room.clients) == 0 {
+			roomToOccupy = roomNumber
+			break
+		}
+	}
+
+	if roomToOccupy == -1 {
+		cfg.Rooms = append(cfg.Rooms, room{
+			clients: make(map[string]*websocket.Conn),
+			state:   "Waiting to Start",
+		})
+	}
 
 	resp := RoomsPostResponse{
 		RoomNumber: len(cfg.Rooms),
+	}
+
+	if roomToOccupy != -1 {
+		resp.RoomNumber = roomToOccupy + 1
 	}
 
 	log.Println("Responding to a room creation request")

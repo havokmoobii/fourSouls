@@ -115,6 +115,9 @@ func (cfg *ClientConfig) CheckServer() error {
 	}
 
 	for roomNumber, game := range status.Games {
+		if len(game.Users) == 0 {
+			continue
+		}
 		fmt.Printf("\nGameroom %v:\n", roomNumber+1)
 		for _, user := range game.Users {
 			fmt.Println(user)
