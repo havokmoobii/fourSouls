@@ -125,7 +125,7 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	log.Println("Client Successfully Connected")
 
 	for {
-		var msg interface{}
+		var msg any
 		err = conn.ReadJSON(&msg)
 		if err != nil {
 			log.Println("Read error:", err)
@@ -136,7 +136,7 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 		log.Println(msg)
 
-		for _, client := range cfg.Clients {
+		for _, client := range cfg.Rooms[roomNumber-1].clients {
 			if err := client.WriteJSON(msg); err != nil {
 				log.Println("Write error:", err)
 				break
@@ -145,7 +145,7 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	dat, err := json.Marshal(payload)
 	if err != nil {

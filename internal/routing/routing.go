@@ -222,6 +222,8 @@ func (cfg *ClientConfig) ReceivePost() {
 			}
 			cfg.GS = pst.GS
 		}
+
+		fmt.Println("\n>")
 	}
 }
 

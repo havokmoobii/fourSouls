@@ -1,7 +1,9 @@
 package main
 
 // Next Time:
-// Look at the payload server side when someone joins a room and see what that is doing
+// Send a message to all clients when someone joins a room,
+// but only update the display if that user's game is not in progress.
+// Otherwise, update the display with the full lobby.
 // Figure out why the start command doesn't work anymore.
 //
 // See if Below is still a problem
