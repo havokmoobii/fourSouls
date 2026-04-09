@@ -2,6 +2,7 @@ package main
 
 // Next Time:
 // Send a message to all clients when someone joins a room,
+// Need to show lobby updates when people join
 // but only update the display if that user's game is not in progress.
 // Otherwise, update the display with the full lobby.
 // Figure out why the start command doesn't work anymore.
@@ -9,11 +10,6 @@ package main
 // See if Below is still a problem
 // Next time: Figure out timing with starting game and the menu.
 // Currently it loops back to the menu before the start game command registers
-// Make it possible to make multiple rooms.
-//
-// Idea: Use a channel for the above problem.
-// Have the program halt after the start command and the reciever can send the
-// proceed command. Would probably cause issues with the other clients though.
 //
 // Idea: have a game started flag in client config to tell the WS listener to change its
 // behavior after leaving the lobby to reduce the number of connections
