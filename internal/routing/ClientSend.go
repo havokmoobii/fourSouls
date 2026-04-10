@@ -23,27 +23,6 @@ type ClientConfig struct {
 	GS          gamelogic.GameState
 }
 
-type PostKind int
-
-const (
-	PostPlayerJoined PostKind = iota
-	PostGameStart
-	PostStateUpdate
-	PostChat
-)
-
-type Post struct {
-	Kind PostKind
-	GS   gamelogic.GameState
-	Msg  Message
-}
-
-type Message struct {
-	Sender    string
-	Recipient string
-	Body      string
-}
-
 func (cfg *ClientConfig) Connect(roomNumber string) error {
 	roomNumberInt, err := strconv.Atoi(roomNumber)
 	if err != nil {

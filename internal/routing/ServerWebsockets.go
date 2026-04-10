@@ -54,8 +54,8 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	log.Println("Client Successfully Connected")
 
 	for {
-		var msg any
-		err = conn.ReadJSON(&msg)
+		var pst Post
+		err = conn.ReadJSON(&pst)
 		if err != nil {
 			log.Println("Read error:", err)
 			log.Println("Removing disconnected user", username, "from room", roomNumber)
@@ -63,10 +63,14 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		log.Println(msg)
+		if pst.Kind == PostPlayerJoined {
+			cfg.sendLobbyUpdate()
+		}
+
+		log.Println(pst)
 
 		for _, client := range cfg.Rooms[roomNumber-1].clients {
-			if err := client.WriteJSON(msg); err != nil {
+			if err := client.WriteJSON(pst); err != nil {
 				log.Println("Write error:", err)
 				break
 			}
@@ -78,4 +82,24 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+}
+
+func (cfg *ServerConfig) sendLobbyUpdate() {
+	log.Println("Sending a lobby update request to all clients")
+	for _, room := range cfg.Rooms {
+		for _, client := range room.clients {
+			update := Post{
+				Kind: PostLobbyUpdate,
+				Msg: Message{
+					Sender: "Server",
+				},
+			}
+
+			if err := client.WriteJSON(update); err != nil {
+				log.Println("Write error:", err)
+				break
+			}
+
+		}
+	}
 }

@@ -1,10 +1,8 @@
 package main
 
 // Next Time:
-// Send a message to all clients when someone joins a room,
-// Need to show lobby updates when people join
-// but only update the display if that user's game is not in progress.
-// Otherwise, update the display with the full lobby.
+// Figure out formatting on all current messages. Develop an
+// actual standard.
 // Figure out why the start command doesn't work anymore.
 //
 // See if Below is still a problem

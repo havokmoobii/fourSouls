@@ -2,7 +2,31 @@ package routing
 
 import (
 	"fmt"
+
+	"github.com/havokmoobii/fourSouls/internal/gamelogic"
 )
+
+type PostKind int
+
+const (
+	PostPlayerJoined PostKind = iota
+	PostLobbyUpdate
+	PostGameStart
+	PostStateUpdate
+	PostChat
+)
+
+type Post struct {
+	Kind PostKind
+	GS   gamelogic.GameState
+	Msg  Message
+}
+
+type Message struct {
+	Sender    string
+	Recipient string
+	Body      string
+}
 
 func (cfg *ClientConfig) ReceivePost() {
 	// Maybe have a second loop before the game starts for different behavior?
@@ -17,7 +41,12 @@ func (cfg *ClientConfig) ReceivePost() {
 			fmt.Println("Read error:", err)
 		}
 		if pst.Kind == PostPlayerJoined {
-			fmt.Println("Someone has joined the lobby!")
+			fmt.Println(pst.Msg.Sender, "has joined the game.")
+		}
+		if pst.Kind == PostLobbyUpdate {
+			if !cfg.StartSignal {
+				cfg.CheckServer()
+			}
 		}
 		if pst.Kind == PostGameStart {
 			cfg.StartSignal = true
@@ -34,6 +63,6 @@ func (cfg *ClientConfig) ReceivePost() {
 			cfg.GS = pst.GS
 		}
 
-		fmt.Println("\n>")
+		fmt.Print("\n> ")
 	}
 }
