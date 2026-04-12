@@ -9,13 +9,6 @@ package main
 // the "Press enter to continue message"?
 // Maybe have a message post saying x player is ready when the press enter
 // and after the last player does the console will say game is starting!
-//
-// See if Below is still a problem
-// Next time: Figure out timing with starting game and the menu.
-// Currently it loops back to the menu before the start game command registers
-//
-// Idea: have a game started flag in client config to tell the WS listener to change its
-// behavior after leaving the lobby to reduce the number of connections
 
 import (
 	"fmt"
