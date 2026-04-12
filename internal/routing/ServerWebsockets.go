@@ -51,7 +51,7 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	cfg.Rooms[roomNumber-1].clients[username] = conn
 
-	log.Println("Client Successfully Connected")
+	log.Println(username, "successfully connected")
 
 	for {
 		var pst Post
@@ -67,7 +67,8 @@ func (cfg *ServerConfig) HandleConnect(w http.ResponseWriter, r *http.Request) {
 			cfg.sendLobbyUpdate()
 		}
 
-		log.Println(pst)
+		//For debugging posts
+		//log.Println(pst)
 
 		for _, client := range cfg.Rooms[roomNumber-1].clients {
 			if err := client.WriteJSON(pst); err != nil {
@@ -85,7 +86,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func (cfg *ServerConfig) sendLobbyUpdate() {
-	log.Println("Sending a lobby update request to all clients")
+	log.Println("Sending a lobby update to all clients")
 	for _, room := range cfg.Rooms {
 		for _, client := range room.clients {
 			update := Post{

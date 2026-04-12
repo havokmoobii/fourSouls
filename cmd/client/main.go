@@ -1,7 +1,6 @@
 package main
 
 // Next Time:
-// Update server text to be less spammy.
 // Fix crash if someone leaves a started game and attempts to rejoin.
 // Add status to rooms.
 // Do same text formatting for game loop as for the lobby loop
@@ -79,13 +78,11 @@ func main() {
 				fmt.Print("\nerror: ", err)
 				fmt.Println()
 			}
-		case "update":
-			err = cfg.CheckServer()
-			if err != nil {
-				fmt.Print("\nerror: ", err)
-				fmt.Println()
-			}
 		case "start":
+			if cfg.RoomNumber == 0 {
+				fmt.Println("Cannot start without joining or creating a room!")
+				continue
+			}
 			err = cfg.SendPost(routing.Post{
 				Kind: routing.PostGameStart,
 			})

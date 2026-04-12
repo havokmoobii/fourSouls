@@ -39,8 +39,6 @@ func (cfg *ServerConfig) HandleRooms(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Println("Responding to a Status Request")
-
 	respondWithJSON(w, http.StatusOK, status)
 }
 

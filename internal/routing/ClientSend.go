@@ -100,7 +100,7 @@ func (cfg *ClientConfig) CheckServer() error {
 		if len(game.Users) == 0 {
 			continue
 		}
-		fmt.Printf("\nGameroom %v:\n", roomNumber+1)
+		fmt.Printf("\nGameroom %v: - %s\n", roomNumber+1, game.State)
 		for _, user := range game.Users {
 			fmt.Println(user)
 		}

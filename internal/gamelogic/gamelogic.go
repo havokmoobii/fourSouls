@@ -24,8 +24,6 @@ func PrintLobbyHelp() {
 	fmt.Println("* join <room#>")
 	fmt.Println("    example:")
 	fmt.Println("    join 1")
-	fmt.Println("* update")
-	fmt.Println("    todo: make lobby update in real time")
 	fmt.Println("* quit")
 	fmt.Println("* help")
 }
