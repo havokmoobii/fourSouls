@@ -31,6 +31,7 @@ type Message struct {
 func (cfg *ClientConfig) ReceivePost() {
 	// Maybe have a second loop before the game starts for different behavior?
 	for {
+		var updateChat bool
 		var pst Post
 		err := cfg.Conn.ReadJSON(&pst)
 
@@ -41,15 +42,23 @@ func (cfg *ClientConfig) ReceivePost() {
 			fmt.Println("Read error:", err)
 		}
 		if pst.Kind == PostPlayerJoined {
+			fmt.Println()
+			fmt.Println()
 			fmt.Println(pst.Msg.Sender, "has joined the game.")
+			updateChat = true
 		}
 		if pst.Kind == PostLobbyUpdate {
 			if !cfg.StartSignal {
+				fmt.Println()
 				cfg.CheckServer()
+				updateChat = true
 			}
 		}
 		if pst.Kind == PostGameStart {
 			cfg.StartSignal = true
+			fmt.Println()
+			fmt.Println()
+			fmt.Print("Game is starting. Press enter to continue...")
 		}
 		if pst.Kind == PostChat {
 			cfg.printChat(pst.Msg)
@@ -62,7 +71,9 @@ func (cfg *ClientConfig) ReceivePost() {
 			}
 			cfg.GS = pst.GS
 		}
-
-		fmt.Print("\n> ")
+		if updateChat {
+			fmt.Println()
+			fmt.Print("> ")
+		}
 	}
 }

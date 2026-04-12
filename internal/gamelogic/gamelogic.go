@@ -19,7 +19,6 @@ func ClientWelcome() (string, error) {
 }
 
 func PrintLobbyHelp() {
-	fmt.Println()
 	fmt.Println("Possible commands:")
 	fmt.Println("* create")
 	fmt.Println("* join <room#>")
@@ -32,7 +31,6 @@ func PrintLobbyHelp() {
 }
 
 func PrintClientHelp() {
-	fmt.Println()
 	fmt.Println("Possible commands:")
 	// Generic game action for test
 	fmt.Println("* do")
@@ -40,7 +38,6 @@ func PrintClientHelp() {
 	fmt.Println("* dm <user> <message>")
 	fmt.Println("* quit")
 	fmt.Println("* help")
-	fmt.Print("\n> ")
 }
 
 func GetInput() []string {

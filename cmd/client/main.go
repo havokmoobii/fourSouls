@@ -1,9 +1,14 @@
 package main
 
 // Next Time:
-// Figure out formatting on all current messages. Develop an
-// actual standard.
-// Figure out why the start command doesn't work anymore.
+// Update server text to be less spammy.
+// Fix crash if someone leaves a started game and attempts to rejoin.
+// Add status to rooms.
+// Do same text formatting for game loop as for the lobby loop
+// Make it so that the game doesn't start until all players have passed
+// the "Press enter to continue message"?
+// Maybe have a message post saying x player is ready when the press enter
+// and after the last player does the console will say game is starting!
 //
 // See if Below is still a problem
 // Next time: Figure out timing with starting game and the menu.
@@ -36,16 +41,23 @@ func main() {
 		return
 	}
 
+	fmt.Println()
 	gamelogic.PrintLobbyHelp()
+
 	err = cfg.CheckServer()
 	if err != nil {
 		fmt.Print("\nerror: ", err)
 		fmt.Println()
 	}
 
+	// Lobby loop
 	for {
+		fmt.Println()
 		fmt.Print("> ")
 		words := gamelogic.GetInput()
+		if cfg.StartSignal {
+			break
+		}
 		if len(words) == 0 {
 			continue
 		}
@@ -95,19 +107,16 @@ func main() {
 		default:
 			fmt.Println("\nUnknown command")
 		}
-		if cfg.StartSignal {
-			break
-		}
 	}
 	defer cfg.Conn.Close()
 
+	fmt.Println()
 	gamelogic.PrintClientHelp()
 
-	// When player has priorty they will end each action with a call to post to update the rest of the players and pass priorty.
-	// Game state will be updated after each priority player action. Below will be a REPL loop. Messages to the clients will always provide a cursor to
-	// to make the experience mostly seamless. The idea is that the player is told it is their turn and they can enter relevant commands, but can still use
-	// chat and some other features when they do not have priority
+	// Game Loop
 	for {
+		fmt.Println()
+		fmt.Print("> ")
 		words := gamelogic.GetInput()
 		if len(words) == 0 {
 			continue

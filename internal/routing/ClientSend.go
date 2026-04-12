@@ -35,6 +35,7 @@ func (cfg *ClientConfig) Connect(roomNumber string) error {
 	headers.Add("Room", roomNumber)
 
 	fmt.Println("\nConnecting to server...")
+	fmt.Println()
 
 	Conn, dialResp, err := websocket.DefaultDialer.Dial(url, headers)
 	if err != nil {
@@ -103,7 +104,6 @@ func (cfg *ClientConfig) CheckServer() error {
 		for _, user := range game.Users {
 			fmt.Println(user)
 		}
-		fmt.Println()
 	}
 
 	return nil
