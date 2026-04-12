@@ -1,8 +1,6 @@
 package main
 
 // Next Time:
-// Fix crash if someone leaves a started game and attempts to rejoin.
-// Add status to rooms.
 // Do same text formatting for game loop as for the lobby loop
 // Make it so that the game doesn't start until all players have passed
 // the "Press enter to continue message"?
