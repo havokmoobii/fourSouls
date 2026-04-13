@@ -46,6 +46,8 @@ func main() {
 		fmt.Print("> ")
 		words := gamelogic.GetInput()
 		if cfg.StartSignal {
+			// this needs to come after breaking out of the loop actually..
+			cfg.WaitForStart()
 			break
 		}
 		if len(words) == 0 {

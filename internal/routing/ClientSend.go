@@ -106,6 +106,10 @@ func (cfg *ClientConfig) CheckServer() error {
 		}
 	}
 
+	if cfg.RoomNumber != 0 {
+		cfg.GS.Players = status.Games[cfg.RoomNumber-1].Users
+	}
+
 	return nil
 }
 
@@ -172,6 +176,10 @@ func (cfg *ClientConfig) SendPost(pst Post) error {
 	}
 
 	return nil
+}
+
+func (cfg *ClientConfig) WaitForStart() {
+	fmt.Println("WIP")
 }
 
 func (cfg *ClientConfig) printChat(msg Message) {
